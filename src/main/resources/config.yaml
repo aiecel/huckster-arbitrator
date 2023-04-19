@@ -1,0 +1,16 @@
+exchange:
+  bybit:
+    host: "api-testnet.bybit.com"
+    hostWebsocket: "stream-testnet.bybit.com"
+    apiKey: "LZV3r4Uj17dv4OT4sy"
+    apiSecret: "nP4LJEEqbUC4ravvfo3fsoqULWUKk6uWXAMt"
+
+arbitrator:
+  stableCoins:
+    - USDT
+  majorCoins:
+    - BTC
+    - ETH
+  shitCoins:
+    - DOGE
+    - SHIB
