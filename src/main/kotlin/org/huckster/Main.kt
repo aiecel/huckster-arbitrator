@@ -5,8 +5,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.kotlin.readValue
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
-import org.huckster.arbitrator.Arbitrator
-import org.huckster.exchange.bybit.BybitExchange
+import org.huckster.exchange.binance.BinanceExchange
 import org.huckster.orderbook.Orderbook
 import org.huckster.properties.ApplicationProperties
 
@@ -45,26 +44,33 @@ fun main(args: Array<String>): Unit = runBlocking {
         }
     }
 
-    val arbitrator = Arbitrator(properties.arbitrator)
+    val binance = BinanceExchange(properties.exchange.binance)
+    log.info(binance.ping().toString() + "ms")
 
-    val symbols = arbitrator.generateSymbols()
+    binance.getAvailableSpotSymbols().forEach { symbol ->
+        log.info(symbol)
+    }
 
-    log.info("Generated: ----------------------")
-    symbols.forEachIndexed { index, symbol -> log.info("$index\t$symbol") }
-
-    val bybit = BybitExchange(properties.exchange.bybit)
-//    bybit.init()
-
-    val bybitSpotSymbols = bybit.getAvailableSpotSymbols()
-
-    println("From bybit: -----------------------")
-    bybitSpotSymbols.forEach { println(it) }
-
-    println("Intersect: ------------------------")
-    val intersect = symbols.intersect(bybitSpotSymbols)
-    intersect.forEach { println(it) }
-
-    println("Missing ${symbols.size - intersect.size}")
+//    val arbitrator = Arbitrator(properties.arbitrator)
+//
+//    val symbols = arbitrator.generateSymbols()
+//
+//    log.info("Generated: ----------------------")
+//    symbols.forEachIndexed { index, symbol -> log.info("$index\t$symbol") }
+//
+//    val bybit = BinanceExchange(properties.exchange.bybit)
+////    bybit.init()
+//
+//    val bybitSpotSymbols = bybit.getAvailableSpotSymbols()
+//
+//    println("From bybit: -----------------------")
+//    bybitSpotSymbols.forEach { println(it) }
+//
+//    println("Intersect: ------------------------")
+//    val intersect = symbols.intersect(bybitSpotSymbols)
+//    intersect.forEach { println(it) }
+//
+//    println("Missing ${symbols.size - intersect.size}")
 
 //
 //    launch(Dispatchers.Default) { bybit.listen() }

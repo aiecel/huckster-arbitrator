@@ -1,4 +1,4 @@
-package org.huckster.exchange.bybit
+package org.huckster.exchange.binance
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -7,8 +7,8 @@ import io.ktor.client.plugins.websocket.*
 import io.ktor.websocket.*
 import mu.KotlinLogging
 import org.huckster.configureJacksonMapper
-import org.huckster.exchange.bybit.dto.PublicWebsocketMessage
-import org.huckster.exchange.bybit.dto.SubscribeRequest
+import org.huckster.exchange.binance.dto.PublicWebsocketMessage
+import org.huckster.exchange.binance.dto.SubscribeRequest
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
@@ -22,7 +22,7 @@ private const val CHANNEL_PUBLIC_SPOT = "/v5/public/spot"
  *
  * (осторожно! Присутствуют костыли)
  */
-class BybitWebsocketClient(private val properties: BybitProperties) {
+class BybitWebsocketClient(private val properties: BinanceProperties) {
 
     private val objectMapper = ObjectMapper().configureJacksonMapper()
     private val log = KotlinLogging.logger { }

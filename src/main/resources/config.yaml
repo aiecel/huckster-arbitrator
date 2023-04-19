@@ -1,9 +1,9 @@
 exchange:
-  bybit:
-    host: "api-testnet.bybit.com"
-    hostWebsocket: "stream-testnet.bybit.com"
-    apiKey: "LZV3r4Uj17dv4OT4sy"
-    apiSecret: "nP4LJEEqbUC4ravvfo3fsoqULWUKk6uWXAMt"
+  binance:
+    host: "testnet.binance.vision"
+    hostWebsocket: "testnet.binance.vision"
+    apiKey: "LMcxKRKNrCnT2WubqGEnN3ijd6jREBameZYNtXhmnH5bsznGKLlUk63ga4fEkIT8"
+    apiSecret: "iKl5WBPoVYR8VF4jOPdYKGzyKf4LwFkW6NiSe6tTjx8Oq7mloYxN4xuWtlyFeJJT"
 
 arbitrator:
   stableCoins:

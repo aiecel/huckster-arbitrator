@@ -1,6 +1,6 @@
-package org.huckster.exchange.bybit
+package org.huckster.exchange.binance
 
-data class BybitProperties(
+data class BinanceProperties(
     val host: String,
     val hostWebsocket: String,
     val apiKey: String,

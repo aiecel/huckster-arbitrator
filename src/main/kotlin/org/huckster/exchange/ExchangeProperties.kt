@@ -1,10 +1,10 @@
 package org.huckster.exchange
 
-import org.huckster.exchange.bybit.BybitProperties
+import org.huckster.exchange.binance.BinanceProperties
 
 /**
  * Параметры бирж
  */
 data class ExchangeProperties(
-    val bybit: BybitProperties
+    val binance: BinanceProperties
 )

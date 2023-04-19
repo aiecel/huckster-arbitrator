@@ -1,4 +1,4 @@
-package org.huckster.exchange.bybit.dto
+package org.huckster.exchange.binance.dto
 
 import com.fasterxml.jackson.annotation.JsonProperty
 

@@ -1,4 +1,4 @@
-package org.huckster.exchange.bybit.security
+package org.huckster.exchange.binance.security
 
 import java.util.*
 import javax.crypto.Mac

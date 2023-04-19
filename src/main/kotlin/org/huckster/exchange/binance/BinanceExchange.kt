@@ -1,4 +1,4 @@
-package org.huckster.exchange.bybit
+package org.huckster.exchange.binance
 
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -13,15 +13,15 @@ import io.ktor.util.*
 import mu.KotlinLogging
 import org.huckster.configureJacksonMapper
 import org.huckster.exchange.Exchange
-import org.huckster.exchange.bybit.dto.ApiKeyInfo
-import org.huckster.exchange.bybit.dto.InstrumentsInfo
-import org.huckster.exchange.bybit.dto.OrderbookData
-import org.huckster.exchange.bybit.security.LeChiffre
+import org.huckster.exchange.binance.dto.ExchangeInfo
+import org.huckster.exchange.binance.dto.OrderbookData
+import org.huckster.exchange.binance.exception.BinanceException
+import org.huckster.exchange.binance.security.LeChiffre
 import org.slf4j.Logger
 import java.time.Instant
 
-private const val METHOD_GET_API_KEY_INFO = "/v5/user/query-api"
-private const val METHOD_GET_INSTRUMENTS_INFO = "/v5/market/instruments-info"
+private const val METHOD_PING = "/api/v3/ping"
+private const val METHOD_GET_INSTRUMENTS_INFO = "api/v3/exchangeInfo"
 
 private const val HEADER_TIMESTAMP = "X-BAPI-TIMESTAMP"
 private const val HEADER_API_KEY = "X-BAPI-API-KEY"
@@ -31,9 +31,9 @@ private const val HEADER_RECV_WINDOW = "X-BAPI-RECV-WINDOW"
 private const val DEFAULT_RECV_WINDOW = "10000"
 
 /**
- * Биржа Бубит
+ * Биржа Буб.. Бананс
  */
-class BybitExchange(private val properties: BybitProperties) : Exchange {
+class BinanceExchange(private val properties: BinanceProperties) : Exchange {
 
     private val log = KotlinLogging.logger { }
 
@@ -48,54 +48,54 @@ class BybitExchange(private val properties: BybitProperties) : Exchange {
                 configureJacksonMapper()
             }
         }
-        install(createBybitSignaturePlugin(properties.apiSecret))
+        //install(createSignaturePlugin(properties.apiSecret))
         defaultRequest {
             url {
-                protocol = URLProtocol.HTTP
+                protocol = URLProtocol.HTTPS
                 host = properties.host
             }
-            header(HEADER_API_KEY, properties.apiKey)
-            header(HEADER_RECV_WINDOW, DEFAULT_RECV_WINDOW)
         }
     }
 
     private val websocketClient = BybitWebsocketClient(properties)
 
     suspend fun init() {
-        log.info("Initializing Bybit exchange")
+        log.info("Initializing Binance exchange")
         websocketClient.connect()
-        log.info("Initializing Bybit Exchange - done")
+        log.info("Initializing Binance Exchange - done")
     }
 
     suspend fun listen() {
-        log.info("Starting listening to Bybit exchange")
+        log.info("Starting listening to Binance exchange")
         websocketClient.listen()
     }
 
     /**
-     * Получить информацию об API ключе
-     *
-     * [Документация](https://bybit-exchange.github.io/docs/v5/user/apikey-info)
+     * Попингуй
      */
-    suspend fun getApiKeyInfo(): ApiKeyInfo {
-        return client.get(METHOD_GET_API_KEY_INFO).body()
+    suspend fun ping(): Long {
+        val response = client.get(METHOD_PING)
+        if (!response.status.isSuccess()) {
+            throw BinanceException(null, null)
+        }
+        return response.responseTime.timestamp - response.requestTime.timestamp
     }
 
     /**
      * Получить все доступные символы для торговли на споте
      */
     override suspend fun getAvailableSpotSymbols(): Set<String> {
-        val response: InstrumentsInfo = client.get(METHOD_GET_INSTRUMENTS_INFO) {
-            parameter("category", "spot")
+        val response: ExchangeInfo = client.get(METHOD_GET_INSTRUMENTS_INFO) {
+            parameter("permissions", "SPOT")
         }.body()
 
-        return response.result?.list?.map { it.symbol }?.toSet() ?: setOf()
+        val symbols = response.symbols ?: setOf()
+
+        return symbols.map { it.symbol }.toSet()
     }
 
     /**
      * Подписаться на стаканы символов
-     *
-     * [Документация](https://bybit-exchange.github.io/docs/v5/websocket/public/orderbook)
      *
      * @param symbols пары Название актива - Level (1 или 50 для spot)
      * @return id подписки
@@ -120,19 +120,19 @@ class BybitExchange(private val properties: BybitProperties) : Exchange {
                 }
             }
 
-            client.responsePipeline.intercept(HttpResponsePipeline.Receive) {
-                val response = context.response
-                val responseTime = response.responseTime.timestamp - response.requestTime.timestamp
-                val body = response.content.readRemaining().readText()
-                log.debug("<<< Received response: ${response.status} (took $responseTime ms)")
-                if (body.isNotBlank()) {
-                    log.debug("<<< ${response.content.readRemaining().readText()}")
-                }
-            }
+            //client.receivePipeline.intercept(HttpReceivePipeline.After) { response ->
+            //    val responseTime = response.responseTime.timestamp - response.requestTime.timestamp
+            //    val body = response.content.readRemaining().readText()
+            //    log.debug("<<< Received response: ${response.status} (took $responseTime ms)")
+            //    if (body.isNotBlank()) {
+            //        log.debug("<<< $body")
+            //    }
+            //}
         }
 
-    private fun createBybitSignaturePlugin(apiSecret: String) =
-        createClientPlugin("Bybit Signature Plugin") {
+
+    private fun createSignaturePlugin(apiSecret: String) =
+        createClientPlugin("Signature Plugin") {
             val leChiffre = LeChiffre(apiSecret)
 
             // подписываем все запросы

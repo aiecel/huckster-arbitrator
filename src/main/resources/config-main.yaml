@@ -1,9 +1,9 @@
 exchange:
-  bybit:
-    host: "api.bybit.com"
-    hostWebsocket: "stream.bybit.com"
-    apiKey: "q8Jm5KDzY3rAXPMQf1"
-    apiSecret: "kkhFXNdzR8wySl1odQNx40wB2fTy7knNy0Dl"
+  binance:
+    host: "api.binance.com"
+    hostWebsocket: "stream.binance.com:9443"
+    apiKey: "ALgnbBWSULTIELga8J8Rfpz22ooxVwsZkeIis6BVPVE7ZoWnrNxR8n2LILzajjjf"
+    apiSecret: "EF6FLsNGHhWx4II2Dr8jZsh7g1giV6O3LUqWFenT79rv6odrQgrYvUZsvPBAvJIm"
 
 arbitrator:
   stableCoins:
