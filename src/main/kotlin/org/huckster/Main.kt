@@ -3,11 +3,18 @@ package org.huckster
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.kotlin.readValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
+import org.huckster.arbitrator.Arbitrator
+import org.huckster.exchange.Exchange
 import org.huckster.exchange.binance.BinanceExchange
 import org.huckster.orderbook.Orderbook
 import org.huckster.properties.ApplicationProperties
+import java.util.concurrent.ConcurrentHashMap
 
 private val log = KotlinLogging.logger("Main")
 
@@ -44,81 +51,43 @@ fun main(args: Array<String>): Unit = runBlocking {
         }
     }
 
-    val binance = BinanceExchange(properties.exchange.binance)
-    log.info(binance.ping().toString() + "ms")
+    val arbitrator = Arbitrator(properties.arbitrator)
+    val exchange = BinanceExchange(properties.exchange.binance)
 
-    binance.getAvailableSpotSymbols().forEach { symbol ->
-        log.info(symbol)
+    // определение символов
+    val symbols = generateSymbols(arbitrator, exchange)
+    if (symbols == null) {
+        log.error("Damn! I need some symbols to work...")
+        return@runBlocking
     }
 
-//    val arbitrator = Arbitrator(properties.arbitrator)
-//
-//    val symbols = arbitrator.generateSymbols()
-//
-//    log.info("Generated: ----------------------")
-//    symbols.forEachIndexed { index, symbol -> log.info("$index\t$symbol") }
-//
-//    val bybit = BinanceExchange(properties.exchange.bybit)
-////    bybit.init()
-//
-//    val bybitSpotSymbols = bybit.getAvailableSpotSymbols()
-//
-//    println("From bybit: -----------------------")
-//    bybitSpotSymbols.forEach { println(it) }
-//
-//    println("Intersect: ------------------------")
-//    val intersect = symbols.intersect(bybitSpotSymbols)
-//    intersect.forEach { println(it) }
-//
-//    println("Missing ${symbols.size - intersect.size}")
+    // стаканы по символам активов
+    val orderbooks = ConcurrentHashMap<String, Orderbook>()
+    symbols.forEach { orderbooks[it] = Orderbook(10) }
 
-//
-//    launch(Dispatchers.Default) { bybit.listen() }
-//
-//    val orderbooks = mutableMapOf<String, Orderbook>()
-//
-//    orderbooks["BTCUSDT"] = Orderbook(1)
-//
-//    bybit.subscribeToOrderbook(setOf("BTCUSDT" to 1)) { message ->
-//        val bids = message.data.bids.associate { array -> array[0].toDouble() to array[1].toDouble() }
-//        val asks = message.data.asks.associate { array -> array[0].toDouble() to array[1].toDouble() }
-//
-//        val orderbook = orderbooks[message.data.symbol]
-//
-//        if (orderbook != null) {
-//            if (message.type == "snapshot") {
-//                orderbook.clear()
-//            }
-//
-//            orderbook.update(bids, asks)
-//
-//            printOrderbook(orderbook)
-//        }
-//    }
-//
-//    delay(3_000) // не delay говорю!
-//
-//    val apiKeyInfo = bybit.getApiKeyInfo().result
-//
-//    println("API Key Information:")
-//    println("ID: ${apiKeyInfo?.id}")
-//    println("Name: ${apiKeyInfo?.note}")
-//    println("Key: ${apiKeyInfo?.apiKey}")
-//    println("Created: ${apiKeyInfo?.createdAt}")
-//    println("Expiring: ${apiKeyInfo?.expiredAt}")
-}
+    // запуск обновления стаканов символов
+    launch(Dispatchers.Default) {
+        exchange
+            .listenToOrderbookDiff(symbols)
+            .collect { (symbol, diff) ->
+                orderbooks[symbol]?.update(diff.newAsks, diff.newBids)
+            }
+    }
 
-private fun printOrderbook(orderbook: Orderbook): Int {
-    val sb = StringBuilder("Orderbook: \n")
-    orderbook.asks.forEach { (price, value) ->
-        sb.append("ASK $price - $value\n")
+    // запуск расчёта арбитража
+    launch(Dispatchers.Default) {
+        while (isActive) {
+            delay(10000)
+            val arbitrages = arbitrator.findArbitrage(orderbooks).sortedByDescending { it.profit }
+            if (arbitrages.isNotEmpty()) {
+                log.warn("Attention! Found arbitrage opportunities!")
+                arbitrages.forEachIndexed { index, arbitrage ->
+                    log.info("#${index + 1}: profit ${String.format("%.4f", arbitrage.profit)}")
+                    arbitrage.orders.forEach { log.info("- ${it.type} ${it.symbol}") }
+                }
+            }
+        }
     }
-    sb.append("----------------------\n")
-    orderbook.bids.forEach { (price, value) ->
-        sb.append("BID $price - $value\n")
-    }
-    print(sb.toString())
-    return sb.length
 }
 
 private fun printBanner() {
@@ -130,7 +99,7 @@ private fun loadProperties(profile: String?): ApplicationProperties? {
     val objectMapper = ObjectMapper(YAMLFactory()).configureJacksonMapper()
 
     val fileName = if (profile != null) "config-$profile.yaml" else "config.yaml"
-    log.debug("Using properties from file: $fileName")
+    log.info("Using properties from file: $fileName")
 
     val propertiesString = readResourceAsString(fileName)
 
@@ -140,6 +109,29 @@ private fun loadProperties(profile: String?): ApplicationProperties? {
     }
 
     return objectMapper.readValue(propertiesString)
+}
+
+private suspend fun generateSymbols(arbitrator: Arbitrator, exchange: Exchange): Set<String>? {
+    val generatedSymbols = arbitrator.generateSymbols()
+
+    log.info("Generated ${generatedSymbols.size} symbols:")
+    generatedSymbols.forEachIndexed { index, symbol -> log.info("#${index + 1}\t$symbol") }
+
+    log.info("Checking exchange for generated symbols...")
+    val binanceSymbols = exchange.getAvailableSpotSymbols()
+
+    val symbols = generatedSymbols.intersect(binanceSymbols)
+
+    if (symbols.size < generatedSymbols.size) {
+        log.error("Some symbols are not supported:")
+        generatedSymbols.minus(symbols).forEachIndexed { index, symbol ->
+            log.error("#${index + 1}\t$symbol")
+        }
+        return null
+    }
+    log.info("All symbols are good!")
+
+    return symbols
 }
 
 private fun readResourceAsString(path: String): String? {

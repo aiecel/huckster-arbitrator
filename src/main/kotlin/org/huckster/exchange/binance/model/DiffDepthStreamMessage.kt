@@ -1,13 +1,13 @@
-package org.huckster.exchange.binance.dto
+package org.huckster.exchange.binance.model
 
 import com.fasterxml.jackson.annotation.JsonProperty
 
-data class OrderbookData(
-    val type: String,
-    val data: Data,
+data class DiffDepthStreamMessage(
+    val stream: String,
+    val data: Data
 ) {
     data class Data(
-        @JsonProperty("s") val symbol: String,
+        @JsonProperty("E") val timestamp: Long,
         @JsonProperty("b") val bids: List<Array<String>>,
         @JsonProperty("a") val asks: List<Array<String>>
     )

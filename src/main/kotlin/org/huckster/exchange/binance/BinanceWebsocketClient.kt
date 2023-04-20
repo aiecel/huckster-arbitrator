@@ -1,110 +1,87 @@
 package org.huckster.exchange.binance
 
+import com.fasterxml.jackson.core.JacksonException
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import io.ktor.client.*
+import io.ktor.client.plugins.api.*
 import io.ktor.client.plugins.websocket.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.util.*
 import io.ktor.websocket.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.isActive
 import mu.KotlinLogging
 import org.huckster.configureJacksonMapper
-import org.huckster.exchange.binance.dto.PublicWebsocketMessage
-import org.huckster.exchange.binance.dto.SubscribeRequest
-import java.util.*
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentMap
-
-private const val PROTOCOL = "wss://"
-
-private const val CHANNEL_PUBLIC_SPOT = "/v5/public/spot"
+import org.slf4j.Logger
 
 /**
- * Websocket клиент Бубита
- *
- * (осторожно! Присутствуют костыли)
+ * Websocket клиент Бинанса
  */
-class BybitWebsocketClient(private val properties: BinanceProperties) {
+class BinanceWebsocketClient(private val properties: BinanceProperties) {
 
     private val objectMapper = ObjectMapper().configureJacksonMapper()
     private val log = KotlinLogging.logger { }
 
     private val client = HttpClient {
         install(WebSockets)
-    }
-
-    private var spotChannelSession: DefaultClientWebSocketSession? = null
-
-    private val requestSubscriptions: ConcurrentMap<String, (String) -> Unit> = ConcurrentHashMap()
-    private val topicSubscriptions: ConcurrentMap<String, (String) -> Unit> = ConcurrentHashMap()
-
-    suspend fun connect() {
-        val url = "$PROTOCOL${properties.hostWebsocket}$CHANNEL_PUBLIC_SPOT"
-
-        log.info("Connecting to spot channel: $url")
-        spotChannelSession = client.webSocketSession(url)
-        log.info("Connecting to spot channel - done")
-    }
-
-    suspend fun listen() {
-        log.info("Starting listening to spot channel")
-        listenToMessages(spotChannelSession) { receivedMessage ->
-            onMessage(receivedMessage)
-        }
+        install(createLoggingPlugin(log))
     }
 
     /**
-     * Подписаться на топики (канал spot)
+     * Подписаться на streams
      */
-    @Suppress("BlockingMethodInNonBlockingContext") // гонит порожняк
-    suspend fun <T> subscribeSpot(
-        topics: List<String>,
-        responseClass: Class<T>,
-        onMessage: (T) -> Unit
-    ) {
-        requireNotNull(spotChannelSession) { "Websocket channel session must be initialized" }
+    @Suppress("BlockingMethodInNonBlockingContext") // майкл джексон гонит порожняк
+    suspend fun <T> listen(streams: Collection<String>, responseClass: Class<T>): Flow<T> = flow {
+        val baseUrl = URLBuilder(protocol = URLProtocol.WSS, host = properties.hostWebsocket).buildString()
+        val streamsQuery = streams.joinToString("/")
+        val fullUrl = "$baseUrl/stream?streams=$streamsQuery"
 
-        val requestId = UUID.randomUUID().toString()
-        val request = SubscribeRequest(requestId = requestId, args = topics)
-        val requestString = objectMapper.writeValueAsString(request)
+        log.info("Connecting to streams: ${streams.joinToString(", ")}...")
 
-        log.debug(">>> Sending WS request $requestString")
+        client.webSocket(fullUrl) {
+            log.info("Listening to streams: ${streams.joinToString(", ")}")
 
-        spotChannelSession!!.send(requestString)
+            while (isActive) {
+                val incomingFrame = incoming.receive() as? Frame.Text
+                val incomingMessage = incomingFrame?.readText()
 
-        // сохраняем тип чтоб потом знать его в topicSubscription
-        val responseType = objectMapper.constructType(responseClass)
-
-        requestSubscriptions[requestId] = {
-            requestSubscriptions -= requestId
-            topics.forEach { topic ->
-                topicSubscriptions[topic] = { message ->
-                    onMessage(objectMapper.readValue(message, responseType))
+                if (incomingMessage == null) {
+                    log.debug("< Received null WS message :|")
+                } else try {
+                    log.debug("< Received WS message: $incomingMessage")
+                    val response = objectMapper.readValue(incomingMessage, responseClass)
+                    emit(response)
+                } catch (e: JacksonException) {
+                    log.warn(
+                        "Cannot parse WS message to type ${responseClass.simpleName} - ${e.message}, " +
+                                "message text: $incomingMessage"
+                    )
                 }
             }
-            log.debug("Added subscriptions to ${topics.size} topics")
+            close()
         }
     }
 
-    private suspend fun listenToMessages(session: DefaultClientWebSocketSession?, onMessage: (String) -> Unit) {
-        requireNotNull(session) { "Websocket channel session must be initialized" }
-        while (true) {
-            val message = (session.incoming.receive() as? Frame.Text)?.readText()
-            if (message != null) {
-                onMessage(message)
+    @OptIn(InternalAPI::class)
+    private fun createLoggingPlugin(log: Logger) =
+        createClientPlugin("Pretty Logging Plugin") {
+            client.requestPipeline.intercept(HttpRequestPipeline.Render) {
+                log.debug(">>> Executing request: ${context.method.value} ${context.url}")
+                if (context.method != HttpMethod.Get) {
+                    log.debug(">>> ${context.body}")
+                }
+            }
+
+            client.receivePipeline.intercept(HttpReceivePipeline.After) { response ->
+                val responseTime = response.responseTime.timestamp - response.requestTime.timestamp
+                val body = response.content.readRemaining().readText()
+                log.debug("<<< Received response: ${response.status} (took $responseTime ms)")
+                if (body.isNotBlank()) {
+                    log.debug("<<< $body")
+                }
             }
         }
-    }
-
-    private fun onMessage(message: String) {
-        val messageObject: PublicWebsocketMessage = objectMapper.readValue(message)
-
-        if (messageObject.topic != null) {
-            log.debug("<<< Received WS message (topic): $message")
-            topicSubscriptions[messageObject.topic]?.invoke(message)
-        } else if (messageObject.requestId != null) {
-            log.debug("<<< Received WS message (response): $message")
-            requestSubscriptions[messageObject.requestId]?.invoke(message)
-        } else {
-            log.warn("<<< Received WS message (unknown): $message")
-        }
-    }
 }
