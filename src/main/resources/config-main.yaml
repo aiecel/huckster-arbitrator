@@ -5,11 +5,22 @@ exchange:
     apiKey: "ALgnbBWSULTIELga8J8Rfpz22ooxVwsZkeIis6BVPVE7ZoWnrNxR8n2LILzajjjf"
     apiSecret: "EF6FLsNGHhWx4II2Dr8jZsh7g1giV6O3LUqWFenT79rv6odrQgrYvUZsvPBAvJIm"
 
+music:
+  playMusic: true
+  trackName: "Blue moon"
+  trackFile: "blue_moon.wav"
+
+ignoreUnsupportedSymbols: true
+
 arbitrator:
   stableCoins:
     - USDT
   majorCoins:
     - BTC
   shitCoins:
+    - XRP
     - DOGE
     - SOL
+
+scam:
+  minArbitrageProfit: 1.0005

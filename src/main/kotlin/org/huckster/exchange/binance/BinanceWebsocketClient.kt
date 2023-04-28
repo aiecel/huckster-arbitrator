@@ -39,10 +39,10 @@ class BinanceWebsocketClient(private val properties: BinanceProperties) {
         val streamsQuery = streams.joinToString("/")
         val fullUrl = "$baseUrl/stream?streams=$streamsQuery"
 
-        log.info("Connecting to streams: ${streams.joinToString(", ")}...")
+        log.info("Connecting to ${streams.size} streams...")
 
         client.webSocket(fullUrl) {
-            log.info("Listening to streams: ${streams.joinToString(", ")}")
+            log.info("Listening to ${streams.size} streams")
 
             while (isActive) {
                 val incomingFrame = incoming.receive() as? Frame.Text

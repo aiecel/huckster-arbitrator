@@ -1,0 +1,118 @@
+exchange:
+  binance:
+    host: "api.binance.com"
+    hostWebsocket: "stream.binance.com:9443"
+    apiKey: "ALgnbBWSULTIELga8J8Rfpz22ooxVwsZkeIis6BVPVE7ZoWnrNxR8n2LILzajjjf"
+    apiSecret: "EF6FLsNGHhWx4II2Dr8jZsh7g1giV6O3LUqWFenT79rv6odrQgrYvUZsvPBAvJIm"
+
+music:
+  playMusic: true
+  trackName: "Blue moon"
+  trackFile: "blue_moon.wav"
+
+ignoreUnsupportedSymbols: true
+
+arbitrator:
+  stableCoins:
+    - USDT
+    - USDC
+    - BUSD
+  majorCoins:
+    - BTC
+    - ETH
+    - BNB
+  shitCoins:
+    - XRP
+    - ADA
+    - DOGE
+    - MATIC
+    - SOL
+    - DOT
+    - LTC
+    - AVAX
+    - SHIB
+    - TRX
+    - WBTC
+    - LINK
+    - UNI
+    - ATOM
+    - OKB
+    - LEO
+    - ETC
+    - XMR
+    - XLM
+    - TON
+    - FIL
+    - BCH
+    - APT
+    - ARB
+    - LDO
+    - HBAR
+    - NEAR
+    - ICP
+    - VET
+    - CRO
+    - APE
+    - ALGO
+    - GRT
+    - FTM
+    - QNT
+    - EOS
+    - MANA
+    - THETA
+    - STX
+    - AAVE
+    - EGLD
+    - AXS
+    - FLOW
+    - XTZ
+    - RPL
+    - SAND
+    - IMX
+    - CFX
+    - BIT
+    - USDP
+    - CHZ
+    - NEO
+    - KCS
+    - CRV
+    - OP
+    - KLAY
+    - MKR
+    - GMX
+    - SNX
+    - MINA
+    - LUNC
+    - RNDR
+    - FXS
+    - INJ
+    - BSV
+    - ZEC
+    - CAKE
+    - DASH
+    - HT
+    - MIOTA
+    - XEC
+    - XDC
+    - GT
+    - CSPR
+    - BTT
+    - RUNE
+    - TWT
+    - PAXG
+    - LRC
+    - ZIL
+    - WOO
+    - AGIX
+    - FLR
+    - DYDX
+    - CVX
+    - 1INCH
+    - KAVA
+    - ROSE
+    - ENJ
+    - OSMO
+    - BAT
+
+scam:
+  minArbitrageProfit: 1.0005

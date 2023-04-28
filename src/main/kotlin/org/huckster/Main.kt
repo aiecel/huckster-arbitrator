@@ -5,16 +5,17 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.kotlin.readValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
 import org.huckster.arbitrator.Arbitrator
 import org.huckster.exchange.Exchange
 import org.huckster.exchange.binance.BinanceExchange
+import org.huckster.music.MusicPlayer
 import org.huckster.orderbook.Orderbook
-import org.huckster.properties.ApplicationProperties
+import org.huckster.scam.ScamMaster
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.concurrent.thread
 
 private val log = KotlinLogging.logger("Main")
 
@@ -51,12 +52,21 @@ fun main(args: Array<String>): Unit = runBlocking {
         }
     }
 
+    // саша врубай!
+    if (properties.music != null) {
+        thread(name = "MusicThread") {
+            val musicPlayer = MusicPlayer(properties.music)
+            musicPlayer.play()
+        }
+    }
+
     val arbitrator = Arbitrator(properties.arbitrator)
     val exchange = BinanceExchange(properties.exchange.binance)
+    val scamMaster = ScamMaster(properties.scam)
 
     // определение символов
-    val symbols = generateSymbols(arbitrator, exchange)
-    if (symbols == null) {
+    val symbols = generateSymbols(arbitrator, exchange, properties.ignoreUnsupportedSymbols)
+    if (symbols.isEmpty()) {
         log.error("Damn! I need some symbols to work...")
         return@runBlocking
     }
@@ -65,8 +75,8 @@ fun main(args: Array<String>): Unit = runBlocking {
     val orderbooks = ConcurrentHashMap<String, Orderbook>()
     symbols.forEach { orderbooks[it] = Orderbook(10) }
 
-    // запуск обновления стаканов символов
-    launch(Dispatchers.Default) {
+    // запуск обновления стаканов символов (пусть фоном обновляет)
+    val orderbookUpdatingJob = launch(Dispatchers.Default) {
         exchange
             .listenToOrderbookDiff(symbols)
             .collect { (symbol, diff) ->
@@ -74,27 +84,39 @@ fun main(args: Array<String>): Unit = runBlocking {
             }
     }
 
-    // запуск расчёта арбитража
+    // поиск и исполнение арбитража (пока только поиск)
     launch(Dispatchers.Default) {
-        while (isActive) {
-            delay(10000)
+        while (orderbookUpdatingJob.isActive) {
+
+            // а есть чем поживиться?
             val arbitrages = arbitrator.findArbitrage(orderbooks).sortedByDescending { it.profit }
+
+            // если есть...
             if (arbitrages.isNotEmpty()) {
-                log.warn("Attention! Found arbitrage opportunities!")
-                arbitrages.forEachIndexed { index, arbitrage ->
-                    log.info("#${index + 1}: profit ${String.format("%.4f", arbitrage.profit)}")
-                    arbitrage.orders.forEach { log.info("- ${it.type} ${it.symbol}") }
+
+                // берём лучшую сделку
+                val bestArbitrage = arbitrages.first()
+
+                // нужен аппрув
+                if (scamMaster.isApproved(bestArbitrage)) {
+                    log.warn("ARBITRAGE APPROVED BY SCAM MASTER D:")
+                    log.info("Profit ${(bestArbitrage.profit - 1) * 100}%")
+                    bestArbitrage.orders.forEach { log.info("- ${it.type} ${it.symbol} for ${it.price}") }
                 }
             }
+
+            delay(50)
         }
     }
 }
 
+// напечатай БАНнер
 private fun printBanner() {
     val banner = readResourceAsString("banner.txt")
     println("\u001B[32m$banner\u001B[0m")
 }
 
+// загрузи параметры
 private fun loadProperties(profile: String?): ApplicationProperties? {
     val objectMapper = ObjectMapper(YAMLFactory()).configureJacksonMapper()
 
@@ -111,7 +133,17 @@ private fun loadProperties(profile: String?): ApplicationProperties? {
     return objectMapper.readValue(propertiesString)
 }
 
-private suspend fun generateSymbols(arbitrator: Arbitrator, exchange: Exchange): Set<String>? {
+// из resources дай файлик
+private fun readResourceAsString(path: String): String? {
+    return object {}.javaClass.classLoader.getResource(path)?.readText()
+}
+
+// сгенерируй символы для обновления стаканов
+private suspend fun generateSymbols(
+    arbitrator: Arbitrator,
+    exchange: Exchange,
+    ignoreUnsupportedSymbols: Boolean
+): Set<String> {
     val generatedSymbols = arbitrator.generateSymbols()
 
     log.info("Generated ${generatedSymbols.size} symbols:")
@@ -123,17 +155,16 @@ private suspend fun generateSymbols(arbitrator: Arbitrator, exchange: Exchange):
     val symbols = generatedSymbols.intersect(binanceSymbols)
 
     if (symbols.size < generatedSymbols.size) {
-        log.error("Some symbols are not supported:")
-        generatedSymbols.minus(symbols).forEachIndexed { index, symbol ->
-            log.error("#${index + 1}\t$symbol")
-        }
-        return null
+        log.warn("Some symbols are not supported:")
+
+        generatedSymbols
+            .minus(symbols)
+            .forEachIndexed { index, symbol -> log.warn("#${index + 1}\t$symbol") }
+
+        if (!ignoreUnsupportedSymbols) return setOf()
+    } else {
+        log.info("All symbols are good!")
     }
-    log.info("All symbols are good!")
 
     return symbols
-}
-
-private fun readResourceAsString(path: String): String? {
-    return object {}.javaClass.classLoader.getResource(path)?.readText()
 }

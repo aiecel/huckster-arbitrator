@@ -8,7 +8,6 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.jackson.*
-import io.ktor.util.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import mu.KotlinLogging
@@ -97,7 +96,6 @@ class BinanceExchange(private val properties: BinanceProperties) : Exchange {
             }
     }
 
-    @OptIn(InternalAPI::class)
     private fun createLoggingPlugin(log: Logger) =
         createClientPlugin("Pretty Logging Plugin") {
             client.requestPipeline.intercept(HttpRequestPipeline.Render) {
@@ -106,14 +104,5 @@ class BinanceExchange(private val properties: BinanceProperties) : Exchange {
                     log.debug(">>> ${context.body}")
                 }
             }
-
-            //client.receivePipeline.intercept(HttpReceivePipeline.After) { response ->
-            //    val responseTime = response.responseTime.timestamp - response.requestTime.timestamp
-            //    val body = response.content.readRemaining().readText()
-            //    log.debug("<<< Received response: ${response.status} (took $responseTime ms)")
-            //    if (body.isNotBlank()) {
-            //        log.debug("<<< $body")
-            //    }
-            //}
         }
 }

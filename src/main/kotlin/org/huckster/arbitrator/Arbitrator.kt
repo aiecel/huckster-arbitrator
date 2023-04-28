@@ -4,7 +4,6 @@ import mu.KotlinLogging
 import org.huckster.arbitrator.model.Arbitrage
 import org.huckster.arbitrator.model.ArbitrageOrder
 import org.huckster.arbitrator.model.OrderType
-import org.huckster.arbitrator.properties.ArbitratorProperties
 import org.huckster.orderbook.Orderbook
 
 /**
@@ -71,9 +70,9 @@ class Arbitrator(private val properties: ArbitratorProperties) {
                 if (profit > 1) {
                     arbitrageList += Arbitrage(
                         orders = listOf(
-                            ArbitrageOrder(OrderType.BUY, shitStableSymbol),
-                            ArbitrageOrder(OrderType.SELL, shitMajorSymbol),
-                            ArbitrageOrder(OrderType.SELL, majorStableSymbol),
+                            ArbitrageOrder(OrderType.BUY, shitStableSymbol, shitStableAsk),
+                            ArbitrageOrder(OrderType.SELL, shitMajorSymbol, shitMajorBid),
+                            ArbitrageOrder(OrderType.SELL, majorStableSymbol, majorStableBid),
                         ),
                         profit = profit
                     )
