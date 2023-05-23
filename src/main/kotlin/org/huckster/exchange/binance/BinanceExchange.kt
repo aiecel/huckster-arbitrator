@@ -22,7 +22,7 @@ import org.slf4j.Logger
 /**
  * Биржа Буб.. Бананс
  */
-class BinanceExchange(private val properties: BinanceProperties) : Exchange {
+class BinanceExchange(private val properties: BinanceExchangeProperties) : Exchange {
 
     private val log = KotlinLogging.logger { }
 

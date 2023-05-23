@@ -20,7 +20,7 @@ import org.slf4j.Logger
 /**
  * Websocket клиент Бинанса
  */
-class BinanceWebsocketClient(private val properties: BinanceProperties) {
+class BinanceWebsocketClient(private val properties: BinanceExchangeProperties) {
 
     private val objectMapper = ObjectMapper().configureJacksonMapper()
     private val log = KotlinLogging.logger { }

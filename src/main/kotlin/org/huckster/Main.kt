@@ -5,6 +5,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.kotlin.readValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
@@ -12,10 +13,12 @@ import org.huckster.arbitrator.Arbitrator
 import org.huckster.exchange.Exchange
 import org.huckster.exchange.binance.BinanceExchange
 import org.huckster.music.MusicPlayer
+import org.huckster.notification.Notificator
 import org.huckster.orderbook.Orderbook
+import org.huckster.registrar.ArbitrageRegistrar
 import org.huckster.scam.ScamMaster
+import org.huckster.storage.Storage
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.concurrent.thread
 
 private val log = KotlinLogging.logger("Main")
 
@@ -54,15 +57,17 @@ fun main(args: Array<String>): Unit = runBlocking {
 
     // саша врубай!
     if (properties.music != null) {
-        thread(name = "MusicThread") {
-            val musicPlayer = MusicPlayer(properties.music)
-            musicPlayer.play()
-        }
+        val musicPlayer = MusicPlayer(properties.music)
+        musicPlayer.play()
     }
 
-    val arbitrator = Arbitrator(properties.arbitrator)
+    // настраиваем cumпоненты
     val exchange = BinanceExchange(properties.exchange.binance)
+    val notificator = Notificator(properties.notificator)
+    val storage = Storage(properties.storage)
+    val arbitrator = Arbitrator(properties.arbitrator)
     val scamMaster = ScamMaster(properties.scam)
+    val arbitrageRegistrar = ArbitrageRegistrar(properties.registrar, notificator, storage)
 
     // определение символов
     val symbols = generateSymbols(arbitrator, exchange, properties.ignoreUnsupportedSymbols)
@@ -75,13 +80,30 @@ fun main(args: Array<String>): Unit = runBlocking {
     val orderbooks = ConcurrentHashMap<String, Orderbook>()
     symbols.forEach { orderbooks[it] = Orderbook(10) }
 
+    // если дошли до сюда, то инициализация пройдена
+    // пошло поехало...
+    notificator.sendNotification("Huckster стартовал на ${symbols.size} символах (профиль $profile)")
+
     // запуск обновления стаканов символов (пусть фоном обновляет)
-    val orderbookUpdatingJob = launch(Dispatchers.Default) {
-        exchange
-            .listenToOrderbookDiff(symbols)
-            .collect { (symbol, diff) ->
-                orderbooks[symbol]?.update(diff.newAsks, diff.newBids)
+    val orderbookUpdatingJob = launch {
+        while (isActive) {
+            try {
+                exchange
+                    .listenToOrderbookDiff(symbols)
+                    .collect { (symbol, diff) ->
+                        orderbooks[symbol]?.update(diff.newAsks, diff.newBids)
+                    }
+            } catch (e: RuntimeException) {
+                notificator.sendNotification(
+                    """
+                        Произошла ФАТАЛЬНАЯ ошибка в процессе обновления стаканов!
+                        Код ошибки: ${e.javaClass.simpleName} - ${e.message}
+                        Перезапуск обновления стаканов через 10 секунд
+                    """.trimIndent()
+                )
+                delay(10_000)
             }
+        }
     }
 
     // поиск и исполнение арбитража (пока только поиск)
@@ -99,12 +121,12 @@ fun main(args: Array<String>): Unit = runBlocking {
 
                 // нужен аппрув
                 if (scamMaster.isApproved(bestArbitrage)) {
-                    log.warn("ARBITRAGE APPROVED BY SCAM MASTER D:")
-                    log.info("Profit ${(bestArbitrage.profit - 1) * 100}%")
-                    bestArbitrage.orders.forEach { log.info("- ${it.type} ${it.symbol} for ${it.price}") }
+                    arbitrageRegistrar.registerArbitrageFound(bestArbitrage)
+
+                    // временно тормозим чтоб не спамить
+                    delay(1000)
                 }
             }
-
             delay(50)
         }
     }

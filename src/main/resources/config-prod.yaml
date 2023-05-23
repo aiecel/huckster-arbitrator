@@ -1,3 +1,6 @@
+ignoreUnsupportedSymbols: true
+notifyFatalError: true
+
 exchange:
   binance:
     host: "api.binance.com"
@@ -6,11 +9,19 @@ exchange:
     apiSecret: "EF6FLsNGHhWx4II2Dr8jZsh7g1giV6O3LUqWFenT79rv6odrQgrYvUZsvPBAvJIm"
 
 music:
-  playMusic: true
+  playMusic: false
   trackName: "Blue moon"
   trackFile: "blue_moon.wav"
 
-ignoreUnsupportedSymbols: true
+notificator:
+  host: api.telegram.org
+  token: 5796758875:AAFzrBfIAe-ueMbsfOuaaCfUSUcAuxt8kFw
+  chatId: -820535926
+
+storage:
+  url: jdbc:postgresql://localhost:5432/huckster
+  user: postgres
+  password: postgres
 
 arbitrator:
   stableCoins:
@@ -115,4 +126,8 @@ arbitrator:
     - BAT
 
 scam:
-  minArbitrageProfit: 1.0005
+  minArbitrageProfit: 1.003
+
+registrar:
+  sendNotifications: true
+  useStorage: true
