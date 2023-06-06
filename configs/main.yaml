@@ -1,10 +1,10 @@
 ignoreUnsupportedSymbols: true
-notifyFatalError: true
+notifyOrderbookUpdateFailure: true
 
 music:
   playMusic: false
   trackName: "Blue moon"
-  trackFile: "blue_moon.wav"
+  trackFile: "music/blue_moon.wav"
 
 exchange:
   binance:
@@ -35,7 +35,3 @@ arbitrator:
 
 scam:
   minArbitrageProfit: 1.01
-
-registrar:
-  sendNotifications: true
-  useStorage: true

@@ -1,7 +1,10 @@
 package org.huckster.notification
 
+/**
+ * Параметры телеграм уведомлений
+ */
 data class NotificationProperties(
-    val host: String,
+    val host: String = "api.telegram.org",
     val token: String,
-    val chatId: String
+    val chatId: String // смотри в url в телеге
 )

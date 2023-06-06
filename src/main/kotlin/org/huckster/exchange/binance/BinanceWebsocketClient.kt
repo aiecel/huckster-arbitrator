@@ -19,6 +19,8 @@ import org.slf4j.Logger
 
 /**
  * Websocket клиент Бинанса
+ *
+ * [Документация](https://binance-docs.github.io/apidocs/spot/en/#websocket-market-streams)
  */
 class BinanceWebsocketClient(private val properties: BinanceExchangeProperties) {
 
@@ -51,7 +53,7 @@ class BinanceWebsocketClient(private val properties: BinanceExchangeProperties) 
                 if (incomingMessage == null) {
                     log.debug("< Received null WS message :|")
                 } else try {
-                    log.debug("< Received WS message: $incomingMessage")
+                    log.trace("< Received WS message: $incomingMessage")
                     val response = objectMapper.readValue(incomingMessage, responseClass)
                     emit(response)
                 } catch (e: JacksonException) {

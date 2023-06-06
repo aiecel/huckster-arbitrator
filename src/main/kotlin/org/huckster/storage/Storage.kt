@@ -9,16 +9,22 @@ import org.huckster.arbitrator.model.Arbitrage
 import org.intellij.lang.annotations.Language
 import java.time.LocalDateTime
 
+/**
+ * Хранилище
+ */
 class Storage(properties: StorageProperties) {
 
     private val session = session(properties.url, properties.user, properties.password)
     private val log = KotlinLogging.logger { }
 
+    /**
+     * Сохранить арбитраж
+     */
     suspend fun save(arbitrage: Arbitrage) = withContext(Dispatchers.IO) {
 
         @Language("PostgreSQL")
         val insertArbitrageSql =
-            "insert into arbitrages (id, timestamp, profit) values (?, ?, ?)";
+            "insert into arbitrages (id, timestamp, profit) values (?, ?, ?)"
 
         @Language("PostgreSQL")
         val insertOrderSql =

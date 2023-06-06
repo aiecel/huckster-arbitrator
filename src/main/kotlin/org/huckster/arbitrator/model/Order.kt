@@ -1,6 +1,9 @@
 package org.huckster.arbitrator.model
 
-data class ArbitrageOrder(
+/**
+ * Сделка
+ */
+data class Order(
     val type: OrderType,
     val symbol: String,
     val price: Double

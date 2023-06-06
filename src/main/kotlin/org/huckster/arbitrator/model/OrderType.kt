@@ -1,5 +1,9 @@
 package org.huckster.arbitrator.model
 
-enum class OrderType {
-    BUY, SELL
+/**
+ * Тип сделки
+ */
+enum class OrderType(val description: String) {
+    BUY("Покупка"),
+    SELL("Продажа")
 }

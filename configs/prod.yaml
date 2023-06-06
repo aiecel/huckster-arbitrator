@@ -1,5 +1,10 @@
 ignoreUnsupportedSymbols: true
-notifyFatalError: true
+notifyOrderbookUpdateFailure: true
+
+music:
+  playMusic: true
+  trackName: "Blue moon"
+  trackFile: "music/blue_moon.wav"
 
 exchange:
   binance:
@@ -7,11 +12,7 @@ exchange:
     hostWebsocket: "stream.binance.com:9443"
     apiKey: "ALgnbBWSULTIELga8J8Rfpz22ooxVwsZkeIis6BVPVE7ZoWnrNxR8n2LILzajjjf"
     apiSecret: "EF6FLsNGHhWx4II2Dr8jZsh7g1giV6O3LUqWFenT79rv6odrQgrYvUZsvPBAvJIm"
-
-music:
-  playMusic: false
-  trackName: "Blue moon"
-  trackFile: "blue_moon.wav"
+    feePercentage: 0.01
 
 notificator:
   host: api.telegram.org
@@ -126,8 +127,5 @@ arbitrator:
     - BAT
 
 scam:
-  minArbitrageProfit: 1.003
-
-registrar:
-  sendNotifications: true
-  useStorage: true
+  minArbitrageProfitPercentage: 0.01
+  orderbookFreshnessMinutes: 5

@@ -13,16 +13,24 @@ import kotlinx.coroutines.flow.map
 import mu.KotlinLogging
 import org.huckster.configureJacksonMapper
 import org.huckster.exchange.Exchange
+import org.huckster.exchange.binance.exception.BinanceException
 import org.huckster.exchange.binance.model.DiffDepthStreamMessage
 import org.huckster.exchange.binance.model.ExchangeInfoResponse
-import org.huckster.exchange.binance.exception.BinanceException
 import org.huckster.orderbook.OrderbookDiff
 import org.slf4j.Logger
+import java.time.Instant
 
 /**
  * Биржа Буб.. Бананс
+ *
+ * [Документация](https://binance-docs.github.io/apidocs/spot/en/#introduction)
  */
 class BinanceExchange(private val properties: BinanceExchangeProperties) : Exchange {
+
+    /**
+     * Получить процент комиссии на бирже
+     */
+    override val feePercentage = properties.feePercentage
 
     private val log = KotlinLogging.logger { }
 
@@ -72,10 +80,10 @@ class BinanceExchange(private val properties: BinanceExchangeProperties) : Excha
     }
 
     /**
-     * Подписаться на стаканы символов
+     * Подписаться на изменения стаканов
      *
-     * @param symbols пары Название актива - Level (1 или 50 для spot)
-     * @return id подписки
+     * @param symbols Символы
+     * @return пары Символ - Изменение стакана
      */
     override suspend fun listenToOrderbookDiff(symbols: Set<String>): Flow<Pair<String, OrderbookDiff>> {
         val streams = symbols.map { symbol -> "${symbol.lowercase()}@depth@100ms" }
@@ -87,7 +95,7 @@ class BinanceExchange(private val properties: BinanceExchangeProperties) : Excha
 
                 with(message.data) {
                     val orderbookDiff = OrderbookDiff(
-                        timestamp = timestamp,
+                        timestamp = Instant.ofEpochMilli(timestamp),
                         newAsks = asks.associate { ask -> ask[0].toDouble() to ask[1].toDouble() },
                         newBids = bids.associate { bid -> bid[0].toDouble() to bid[1].toDouble() }
                     )

@@ -1,5 +1,6 @@
 package org.huckster.orderbook
 
+import java.time.Instant
 import java.util.*
 
 /**
@@ -26,6 +27,26 @@ class Orderbook(
     val bids: SortedMap<Double, Double> = TreeMap(compareByDescending { it })
 
     /**
+     * Время последнего обновления стакана
+     */
+    var lastUpdatedTimestamp: Instant = Instant.now(); private set
+
+    /**
+     * Обновить стакан
+     *
+     * Если объём равен нулю, то запись удаляется.
+     *
+     * После обновления стакана он обрезается -
+     * остаются [size] самых дешёвых продавцов, [size] самых дорогих покупателей
+     *
+     * //todo починить описание
+     */
+    fun update(orderbookDiff: OrderbookDiff) {
+        updateAsksAndBids(orderbookDiff.newAsks, orderbookDiff.newBids)
+        lastUpdatedTimestamp = orderbookDiff.timestamp
+    }
+
+    /**
      * Обновить стакан
      *
      * Если объём равен нулю, то запись удаляется.
@@ -37,14 +58,8 @@ class Orderbook(
      * @param newBids новые BID (цена -> объём)
      */
     fun update(newAsks: Map<Double, Double> = mapOf(), newBids: Map<Double, Double> = mapOf()) {
-        newAsks.forEach { (price, volume) ->
-            if (volume == 0.0) asks -= price else asks[price] = volume
-        }
-        newBids.forEach { (price, volume) ->
-            if (volume == 0.0) bids -= price else bids[price] = volume
-        }
-        trimStart(asks, size)
-        trimEnd(bids, size)
+        updateAsksAndBids(newAsks, newBids)
+        lastUpdatedTimestamp = Instant.now()
     }
 
     /**
@@ -53,6 +68,21 @@ class Orderbook(
     fun clear() {
         asks.clear()
         bids.clear()
+    }
+
+    private fun updateAsksAndBids(newAsks: Map<Double, Double>, newBids: Map<Double, Double>) {
+        if (newAsks.isNotEmpty()) {
+            newAsks.forEach { (price, volume) ->
+                if (volume == 0.0) asks -= price else asks[price] = volume
+            }
+            trimStart(asks, size)
+        }
+        if (newBids.isNotEmpty()) {
+            newBids.forEach { (price, volume) ->
+                if (volume == 0.0) bids -= price else bids[price] = volume
+            }
+            trimEnd(bids, size)
+        }
     }
 
     private fun trimStart(map: SortedMap<Double, Double>, size: Int) {
