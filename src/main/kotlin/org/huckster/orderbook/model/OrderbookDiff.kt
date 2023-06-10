@@ -1,4 +1,4 @@
-package org.huckster.orderbook
+package org.huckster.orderbook.model
 
 import java.time.Instant
 

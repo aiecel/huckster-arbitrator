@@ -1,14 +1,15 @@
 package org.huckster
 
-import org.huckster.arbitrator.ArbitratorProperties
+import org.huckster.arbitrage.ArbitratorProperties
 import org.huckster.exchange.ExchangeProperties
 import org.huckster.music.MusicProperties
 import org.huckster.notification.NotificationProperties
+import org.huckster.orderbook.OrderbookProperties
 import org.huckster.scam.ScamProperties
 import org.huckster.storage.StorageProperties
 
 /**
- * Параметры (корень)
+ * Параметры Huckster
  */
 data class ApplicationProperties(
 
@@ -20,19 +21,33 @@ data class ApplicationProperties(
     val ignoreUnsupportedSymbols: Boolean = false,
 
     /**
-     * Оповещать о старте обновления стаканов
-     */
-    val notifyOrderbookUpdateStart: Boolean = false,
-
-    /**
      * Оповещать о возникновении фатальной ошибки при обновлении стаканов
      */
     val notifyOrderbookUpdateFailure: Boolean = false,
 
     /**
+     * Через сколько миллисекунд перезапускать обновление стаканов в случае падения.
+     *
+     * Чтобы не перезапускать напиши -1
+     */
+    val restartOrderbookUpdateInMillis: Long = -1,
+
+    /**
+     * Сколько миллисекунд ждать после выполнения арбитража.
+     *
+     * Нужно чтоб не спамить
+     */
+    val waitAfterArbitrageExecutionMillis: Long = 5000,
+
+    /**
      * Параметры музыки (режим БТБТ)
      */
     val music: MusicProperties?,
+
+    /**
+     * Параметры стаканов
+     */
+    val orderbook: OrderbookProperties = OrderbookProperties(),
 
     /**
      * Параметры биржи
@@ -42,12 +57,12 @@ data class ApplicationProperties(
     /**
      * Параметры арбитратора
      */
-    val arbitrator: ArbitratorProperties,
+    val arbitrator: ArbitratorProperties = ArbitratorProperties(),
 
     /**
      * Параметры скам мастера
      */
-    val scam: ScamProperties,
+    val scam: ScamProperties = ScamProperties(),
 
     /**
      * Параметры уведомлений

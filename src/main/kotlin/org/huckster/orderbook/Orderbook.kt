@@ -1,5 +1,7 @@
 package org.huckster.orderbook
 
+import org.huckster.orderbook.model.OrderbookDiff
+import org.huckster.orderbook.model.PriceLevel
 import java.time.Instant
 import java.util.*
 
@@ -13,7 +15,7 @@ class Orderbook(
     /**
      * Максимальное число ASKов и BIDов, которое может хранить стакан
      */
-    private val size: Int = 10
+    private val size: Int
 ) {
 
     /**
@@ -32,6 +34,24 @@ class Orderbook(
     var lastUpdatedTimestamp: Instant = Instant.now(); private set
 
     /**
+     * Получить лучшую цену и объём на покупку
+     */
+    fun getBestAsk(): PriceLevel? =
+        if (asks.isNotEmpty()) {
+            val bestAskPrice = asks.lastKey()
+            PriceLevel(bestAskPrice, asks[bestAskPrice] ?: 0.0)
+        } else null
+
+    /**
+     * Получить лучшую цену и объём на продажу
+     */
+    fun getBestBid(): PriceLevel? =
+        if (bids.isNotEmpty()) {
+            val bestBidPrice = bids.firstKey()
+            PriceLevel(bestBidPrice, bids[bestBidPrice] ?: 0.0)
+        } else null
+
+    /**
      * Обновить стакан
      *
      * Если объём равен нулю, то запись удаляется.
@@ -47,22 +67,6 @@ class Orderbook(
     }
 
     /**
-     * Обновить стакан
-     *
-     * Если объём равен нулю, то запись удаляется.
-     *
-     * После обновления стакана он обрезается -
-     * остаются [size] самых дешёвых продавцов, [size] самых дорогих покупателей
-     *
-     * @param newAsks новые ASK (цена -> объём)
-     * @param newBids новые BID (цена -> объём)
-     */
-    fun update(newAsks: Map<Double, Double> = mapOf(), newBids: Map<Double, Double> = mapOf()) {
-        updateAsksAndBids(newAsks, newBids)
-        lastUpdatedTimestamp = Instant.now()
-    }
-
-    /**
      * Очистить стакан
      */
     fun clear() {
@@ -73,13 +77,13 @@ class Orderbook(
     private fun updateAsksAndBids(newAsks: Map<Double, Double>, newBids: Map<Double, Double>) {
         if (newAsks.isNotEmpty()) {
             newAsks.forEach { (price, volume) ->
-                if (volume == 0.0) asks -= price else asks[price] = volume
+                if (volume <= 0.0) asks -= price else asks[price] = volume
             }
             trimStart(asks, size)
         }
         if (newBids.isNotEmpty()) {
             newBids.forEach { (price, volume) ->
-                if (volume == 0.0) bids -= price else bids[price] = volume
+                if (volume <= 0.0) bids -= price else bids[price] = volume
             }
             trimEnd(bids, size)
         }

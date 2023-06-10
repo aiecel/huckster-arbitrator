@@ -1,9 +1,9 @@
-package org.huckster.arbitrator
+package org.huckster.arbitrage
 
 import mu.KotlinLogging
-import org.huckster.arbitrator.model.Arbitrage
-import org.huckster.arbitrator.model.Order
-import org.huckster.arbitrator.model.OrderType
+import org.huckster.arbitrage.model.Arbitrage
+import org.huckster.arbitrage.model.Order
+import org.huckster.arbitrage.model.OrderType
 import org.huckster.exchange.binance.BinanceExchange
 import org.huckster.orderbook.OrderbookKeeper
 
@@ -65,29 +65,26 @@ class Arbitrator(
         val majorStableOrderbook = orderbookKeeper.getOrderbook(majorStableSymbol)
 
         if (shitStableOrderbook == null || shitMajorOrderbook == null || majorStableOrderbook == null) {
-            log.debug(
-                "Cannot find arbitrage " +
-                        "for chain $shitStableSymbol -> $shitMajorSymbol -> $majorStableSymbol - " +
-                        "some orderbooks are missing"
-            )
+//            log.debug(
+//                "Cannot find arbitrage " +
+//                        "for chain $shitStableSymbol -> $shitMajorSymbol -> $majorStableSymbol - " +
+//                        "some orderbooks are missing"
+//            )
             return null
         }
 
-        if (shitStableOrderbook.asks.isEmpty()
-            || shitMajorOrderbook.bids.isEmpty()
-            || majorStableOrderbook.bids.isEmpty()
-        ) {
-            log.debug(
-                "Cannot find arbitrage " +
-                        "for chain $shitStableSymbol -> $shitMajorSymbol -> $majorStableSymbol - " +
-                        "some orderbooks are missing prices needed"
-            )
+        val shitStableAsk = shitStableOrderbook.getBestAsk()?.price
+        val shitMajorBid = shitMajorOrderbook.getBestBid()?.price
+        val majorStableBid = majorStableOrderbook.getBestBid()?.price
+
+        if (shitStableAsk == null || shitMajorBid == null || majorStableBid == null) {
+//            log.debug(
+//                "Cannot find arbitrage " +
+//                        "for chain $shitStableSymbol -> $shitMajorSymbol -> $majorStableSymbol - " +
+//                        "some orderbooks are missing prices needed"
+//            )
             return null
         }
-
-        val shitStableAsk = shitStableOrderbook.asks.lastKey()
-        val shitMajorBid = shitMajorOrderbook.bids.firstKey()
-        val majorStableBid = majorStableOrderbook.bids.firstKey()
 
         val fee = exchange.feePercentage / 100
 

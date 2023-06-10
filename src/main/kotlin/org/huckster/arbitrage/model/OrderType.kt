@@ -1,4 +1,4 @@
-package org.huckster.arbitrator.model
+package org.huckster.arbitrage.model
 
 /**
  * Тип сделки

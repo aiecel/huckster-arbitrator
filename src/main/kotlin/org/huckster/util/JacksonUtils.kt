@@ -1,4 +1,4 @@
-package org.huckster
+package org.huckster.util
 
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper

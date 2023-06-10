@@ -13,5 +13,5 @@ data class ScamProperties(
     /**
      * Сколько минут должно пройти с последнего обновления стакана, чтобы он считался тухлым
      */
-    val orderbookFreshnessMinutes: Long = 5
+    val orderbookMaxAgeMinutes: Long = 5
 )

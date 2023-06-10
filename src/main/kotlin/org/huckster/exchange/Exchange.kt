@@ -1,7 +1,7 @@
 package org.huckster.exchange
 
 import kotlinx.coroutines.flow.Flow
-import org.huckster.orderbook.OrderbookDiff
+import org.huckster.orderbook.model.OrderbookDiff
 
 /**
  * Интерфейс для бирж

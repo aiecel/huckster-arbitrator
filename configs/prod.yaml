@@ -1,10 +1,15 @@
 ignoreUnsupportedSymbols: true
 notifyOrderbookUpdateFailure: true
+restartOrderbookUpdateInMillis: 10000
+waitAfterArbitrageExecutionMillis: 5000
 
 music:
-  playMusic: true
+  playMusic: false
   trackName: "Blue moon"
   trackFile: "music/blue_moon.wav"
+
+orderbook:
+  orderbookSize: 3
 
 exchange:
   binance:
@@ -127,5 +132,5 @@ arbitrator:
     - BAT
 
 scam:
-  minArbitrageProfitPercentage: 0.01
-  orderbookFreshnessMinutes: 5
+  minArbitrageProfitPercentage: 0.3
+  orderbookMaxAgeMinutes: 5

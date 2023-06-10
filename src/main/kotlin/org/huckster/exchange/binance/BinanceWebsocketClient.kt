@@ -3,19 +3,15 @@ package org.huckster.exchange.binance
 import com.fasterxml.jackson.core.JacksonException
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.ktor.client.*
-import io.ktor.client.plugins.api.*
 import io.ktor.client.plugins.websocket.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.util.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
 import mu.KotlinLogging
-import org.huckster.configureJacksonMapper
-import org.slf4j.Logger
+import org.huckster.util.configureJacksonMapper
+import org.huckster.util.loggingPlugin
 
 /**
  * Websocket клиент Бинанса
@@ -29,7 +25,7 @@ class BinanceWebsocketClient(private val properties: BinanceExchangeProperties) 
 
     private val client = HttpClient {
         install(WebSockets)
-        install(createLoggingPlugin(log))
+        install(loggingPlugin(log))
     }
 
     /**
@@ -53,7 +49,7 @@ class BinanceWebsocketClient(private val properties: BinanceExchangeProperties) 
                 if (incomingMessage == null) {
                     log.debug("< Received null WS message :|")
                 } else try {
-                    log.trace("< Received WS message: $incomingMessage")
+                    log.debug("< Received WS message: $incomingMessage")
                     val response = objectMapper.readValue(incomingMessage, responseClass)
                     emit(response)
                 } catch (e: JacksonException) {
@@ -66,24 +62,4 @@ class BinanceWebsocketClient(private val properties: BinanceExchangeProperties) 
             close()
         }
     }
-
-    @OptIn(InternalAPI::class)
-    private fun createLoggingPlugin(log: Logger) =
-        createClientPlugin("Pretty Logging Plugin") {
-            client.requestPipeline.intercept(HttpRequestPipeline.Render) {
-                log.debug(">>> Executing request: ${context.method.value} ${context.url}")
-                if (context.method != HttpMethod.Get) {
-                    log.debug(">>> ${context.body}")
-                }
-            }
-
-            client.receivePipeline.intercept(HttpReceivePipeline.After) { response ->
-                val responseTime = response.responseTime.timestamp - response.requestTime.timestamp
-                val body = response.content.readRemaining().readText()
-                log.debug("<<< Received response: ${response.status} (took $responseTime ms)")
-                if (body.isNotBlank()) {
-                    log.debug("<<< $body")
-                }
-            }
-        }
 }

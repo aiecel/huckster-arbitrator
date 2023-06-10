@@ -5,7 +5,7 @@ import com.vladsch.kotlin.jdbc.sqlQuery
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import mu.KotlinLogging
-import org.huckster.arbitrator.model.Arbitrage
+import org.huckster.arbitrage.model.Arbitrage
 import org.intellij.lang.annotations.Language
 import java.time.LocalDateTime
 
@@ -35,7 +35,7 @@ class Storage(properties: StorageProperties) {
                 sqlQuery(
                     insertArbitrageSql,
                     arbitrage.id,
-                    LocalDateTime.now(),
+                    arbitrage.timestamp,
                     arbitrage.profit
                 )
             )

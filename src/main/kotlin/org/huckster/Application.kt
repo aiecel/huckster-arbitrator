@@ -1,30 +1,40 @@
 package org.huckster
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
-import org.huckster.arbitrator.Arbitrator
-import org.huckster.arbitrator.model.Arbitrage
+import org.huckster.arbitrage.Arbitrator
+import org.huckster.arbitrage.model.Arbitrage
 import org.huckster.exchange.binance.BinanceExchange
 import org.huckster.notification.Notificator
 import org.huckster.orderbook.OrderbookKeeper
 import org.huckster.scam.ScamMaster
 import org.huckster.storage.Storage
+import java.time.Duration
+import java.time.LocalDateTime
+import kotlin.math.absoluteValue
 
 /**
  * Так называемое приложение Huckster
  */
 class Application(private val properties: ApplicationProperties) {
 
-    private val orderbookKeeper = OrderbookKeeper()
+    private val orderbookKeeper = OrderbookKeeper(properties.orderbook)
     private val exchange = BinanceExchange(properties.exchange.binance)
     private val arbitrator = Arbitrator(properties.arbitrator, orderbookKeeper, exchange)
     private val scamMaster = ScamMaster(properties.scam, orderbookKeeper)
     private val notificator = Notificator(properties.notificator)
     private val storage = Storage(properties.storage)
+
+    // используется для ПРОТИВОСРАЧ™ kill-switch
+    private val lastHourArbitrages = mutableSetOf<Arbitrage>()
 
     private val log = KotlinLogging.logger { }
 
@@ -41,14 +51,25 @@ class Application(private val properties: ApplicationProperties) {
         val orderbookUpdatingJob = launch(Dispatchers.Default) {
             while (isActive) {
                 startOrderbookUpdate(symbols)
-                delay(10_000)
+
+                if (properties.restartOrderbookUpdateInMillis < 0) {
+                    log.warn(
+                        "'restartOrderbookUpdateInMillis' property is negative, " +
+                                "cancelling orderbook update job"
+                    )
+                    cancel()
+                }
+
+                // до сюда доходим если обновление стаканов рухнуло и надо рестартовать
+                orderbookKeeper.clearAllOrderbooks()
+                delay(properties.restartOrderbookUpdateInMillis.absoluteValue)
             }
         }
 
         // поиск арбитража
         launch(Dispatchers.Default) {
             while (orderbookUpdatingJob.isActive) {
-                findAndExecuteArbitrages()
+                findAndExecuteArbitrages(orderbookUpdatingJob)
                 delay(10)
             }
         }
@@ -112,8 +133,11 @@ class Application(private val properties: ApplicationProperties) {
             exchange
                 .listenToOrderbookDiff(symbols)
                 .collect { (symbol, diff) -> orderbookKeeper.updateOrderbook(symbol, diff) }
+        } catch (e: CancellationException) {
+            log.warn("Orderbook update cancelled: ${e.message}")
+            sendOrderbookUpdateCancelledNotification(e)
         } catch (e: RuntimeException) {
-            log.error("Orderbook update failure: ${e.javaClass.simpleName}: ${e.message}")
+            log.error("Orderbook update failure: ${e.javaClass.simpleName}: ${e.message}", e)
             if (properties.notifyOrderbookUpdateFailure) {
                 sendOrderbookUpdateFailureNotification(e)
             }
@@ -121,7 +145,7 @@ class Application(private val properties: ApplicationProperties) {
     }
 
     // процесс поиска и исполнения арбитража
-    private suspend fun findAndExecuteArbitrages() {
+    private suspend fun findAndExecuteArbitrages(orderbookUpdatingJob: Job) {
         try {
             // а есть чем поживиться?
             val arbitrages = arbitrator.findAllArbitrages().sortedByDescending { it.profit }
@@ -132,25 +156,28 @@ class Application(private val properties: ApplicationProperties) {
                 // берём лучшую сделку
                 val bestArbitrage = arbitrages.first()
 
-                log.info("Found ${arbitrages.size} arbitrages, best profit: ${bestArbitrage.profit}")
+                log.info("Found ${arbitrages.size} arbitrage(s)")
+                log.info("Best arbitrage: ${bestArbitrage.id}, profit ${bestArbitrage.profitPercentage()}%")
+                bestArbitrage.orders.forEach { log.info("- ${it.type} ${it.symbol} for ${it.price}") }
 
                 // нужен аппрув
                 if (scamMaster.isApproved(bestArbitrage)) {
                     executeArbitrage(bestArbitrage)
 
+                    antispamKillSwitch(bestArbitrage, orderbookUpdatingJob)
+
                     // временно тормозим чтоб не спамить
-                    delay(3000)
+                    delay(properties.waitAfterArbitrageExecutionMillis)
                 }
             }
         } catch (e: RuntimeException) {
-            log.error("Arbitrage finding and executing failed: ${e.javaClass.simpleName}: ${e.message}")
+            log.error("Arbitrage finding and executing failed: ${e.javaClass.simpleName}: ${e.message}", e)
         }
     }
 
     // исполнение арбитража
     private suspend fun executeArbitrage(arbitrage: Arbitrage) {
-        log.info("Found arbitrage: profit ${arbitrage.profit}%")
-        arbitrage.orders.forEach { log.info("- ${it.type} ${it.symbol} for ${it.price}") }
+        log.info("Executing arbitrage ${arbitrage.id}")
 
         sendArbitrageFoundNotification(arbitrage)
 
@@ -163,10 +190,11 @@ class Application(private val properties: ApplicationProperties) {
 
     // отправить оповещение о поломке обновления стаканов
     private suspend fun sendOrderbookUpdateFailureNotification(exception: RuntimeException) = try {
-        notificator.sendNotification(
-            "🫣 *Произошла ФАТАЛЬНАЯ ошибка в процессе обновления стаканов\\!*\n\n" +
-                    "Код ошибки: `${exception.javaClass.simpleName}: ${exception.message}`"
-        )
+        notificator.sendNotification {
+            bold("\uD83E\uDEE3 Произошла ФАТАЛЬНАЯ ошибка в процессе обновления стаканов!\n\n")
+            text("Код ошибки: ")
+            code("${exception.javaClass.simpleName}: ${exception.message}")
+        }
     } catch (e: RuntimeException) {
         log.error(
             "Cannot send notification about orderbook update error: " +
@@ -174,36 +202,49 @@ class Application(private val properties: ApplicationProperties) {
         )
     }
 
+    // отправить оповещение об отмене обновления стаканов
+    private fun sendOrderbookUpdateCancelledNotification(exception: CancellationException) = runBlocking {
+        try {
+            notificator.sendNotification {
+                bold("Отмена обновления стаканов. Huckster вырубается \uD83E\uDEE1\n\n")
+                text("Код отмены: ")
+                code(exception.message ?: "неизвестно")
+            }
+        } catch (e: RuntimeException) {
+            log.error(
+                "Cannot send notification about orderbook update error: " +
+                        "${e.javaClass.simpleName} - ${e.message}"
+            )
+        }
+    }
+
     // отправить оповещение о найденном арбитраже
     private suspend fun sendArbitrageFoundNotification(arbitrage: Arbitrage) = try {
-        val profitEscapedString = arbitrage.profitPercentage().toString().escape()
-
-        val notificationText = StringBuilder(
-            "\uD83D\uDCB5 *Найден арбитраж: профит $profitEscapedString%*\n"
-        )
-
-        arbitrage.orders.forEachIndexed { i, order ->
-            val priceEscapedString = order.price
-                .toString()
-                .escape()
-
-            notificationText
-                .append("\n")
-                .append("${i + 1}\\) ${order.type.description} ${order.symbol} за $priceEscapedString")
+        notificator.sendNotification {
+            bold("\uD83D\uDCB5 Найден арбитраж: профит ${arbitrage.profitPercentage()}%\n\n")
+            arbitrage.orders.forEachIndexed { i, order ->
+                text("${i + 1}) ${order.type.description} ${order.symbol} за ${order.price}\n")
+            }
+            text("\n")
+            code("${arbitrage.id}")
         }
 
-        notificationText
-            .append("\n\n")
-            .append("`${arbitrage.id.toString().escape()}`")
-
-        notificator.sendNotification(notificationText.toString())
     } catch (e: RuntimeException) {
         log.error("Notification sending failed! ${e.javaClass.simpleName} - ${e.message}")
     }
 
-    private fun String.escape() = this
-        .replace(".", "\\.")
-        .replace("-", "\\-")
+    // ПРОТИВОСРАЧ™ kill-switch
+    // вырубаем huckster если зафиксировали беспорядочный спам арбитражей (обычно случается когда что-то грохнулось)
+    private fun antispamKillSwitch(arbitrage: Arbitrage, orderbookUpdatingJob: Job) {
+        lastHourArbitrages += arbitrage
+        lastHourArbitrages.removeIf { it.timestamp < LocalDateTime.now() - Duration.ofHours(1) }
+
+        val maxArbitragesPerHour = (60 * 60 * 1000 / properties.waitAfterArbitrageExecutionMillis).toInt()
+
+        if (lastHourArbitrages.size > maxArbitragesPerHour / 4) {
+            orderbookUpdatingJob.cancel("ПРОТИВОСРАЧ™ kill switch activated")
+        }
+    }
 
     private fun Iterable<Any>.forEachItem(block: (String) -> Unit) =
         forEachIndexed { index, item ->

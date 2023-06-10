@@ -1,4 +1,4 @@
-package org.huckster.arbitrator
+package org.huckster.arbitrage
 
 /**
  * Параметры арбитратора

@@ -1,5 +1,6 @@
-package org.huckster.arbitrator.model
+package org.huckster.arbitrage.model
 
+import java.time.LocalDateTime
 import java.util.*
 import kotlin.math.roundToInt
 
@@ -12,6 +13,11 @@ data class Arbitrage(
      * ID арбитража
      */
     val id: UUID = UUID.randomUUID(),
+
+    /**
+     * Время появления арбитража
+     */
+    val timestamp: LocalDateTime = LocalDateTime.now(),
 
     /**
      * Сделки, которые нужно совершить, чтобы заработать бабло (в теории)
@@ -27,5 +33,5 @@ data class Arbitrage(
     /**
      * Получить прогнозируемый профит в процентах
      */
-    fun profitPercentage() = ((profit - 1) * 10000).roundToInt() / 100.0
+    fun profitPercentage() = ((profit - 1) * 100000).roundToInt() / 1000.0
 }

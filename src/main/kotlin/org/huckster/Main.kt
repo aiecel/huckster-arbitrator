@@ -8,6 +8,7 @@ import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
 import org.huckster.music.MusicPlayer
 import org.huckster.music.MusicProperties
+import org.huckster.util.configureJacksonMapper
 import java.io.FileReader
 import java.io.IOException
 
@@ -45,7 +46,7 @@ private fun printBanner() {
 
 // определи профиль
 private fun getProfile(args: Array<String>): String? {
-    log.debug("Program arguments: $args")
+    log.debug("Program arguments: ${args.contentDeepToString()}")
 
     val profile = args.firstOrNull()
     if (profile != null) {
