@@ -1,7 +1,19 @@
 ignoreUnsupportedSymbols: true
 notifyOrderbookUpdateFailure: true
-restartOrderbookUpdateInMillis: 10000
-waitAfterArbitrageExecutionMillis: 5000
+
+restartDelayMillis: 10000
+
+tooManyRestartsKillSwitch:
+  timeWindowAmount: 1
+  timeWindowUnit: HOURS
+  maxEventsInTimeWindow: 4
+
+arbitrageExecutionDelayMillis: 5000
+
+tooManyArbitragesKillSwitch:
+  timeWindowAmount: 1
+  timeWindowUnit: HOURS
+  maxEventsInTimeWindow: 25
 
 music:
   playMusic: false
@@ -17,12 +29,14 @@ exchange:
     hostWebsocket: "stream.binance.com:9443"
     apiKey: "ALgnbBWSULTIELga8J8Rfpz22ooxVwsZkeIis6BVPVE7ZoWnrNxR8n2LILzajjjf"
     apiSecret: "EF6FLsNGHhWx4II2Dr8jZsh7g1giV6O3LUqWFenT79rv6odrQgrYvUZsvPBAvJIm"
+    streamsChunkSize: 50
     feePercentage: 0.01
 
 notificator:
   host: api.telegram.org
   token: 5796758875:AAFzrBfIAe-ueMbsfOuaaCfUSUcAuxt8kFw
   chatId: -820535926
+  testMode: true
 
 storage:
   url: jdbc:postgresql://localhost:5432/huckster
@@ -33,7 +47,7 @@ arbitrator:
   stableCoins:
     - USDT
     - USDC
-    - BUSD
+  #    - BUSD
   majorCoins:
     - BTC
     - ETH
@@ -64,73 +78,73 @@ arbitrator:
     - APT
     - ARB
     - LDO
-    - HBAR
-    - NEAR
-    - ICP
-    - VET
-    - CRO
-    - APE
-    - ALGO
-    - GRT
-    - FTM
-    - QNT
-    - EOS
-    - MANA
-    - THETA
-    - STX
-    - AAVE
-    - EGLD
-    - AXS
-    - FLOW
-    - XTZ
-    - RPL
-    - SAND
-    - IMX
-    - CFX
-    - BIT
-    - USDP
-    - CHZ
-    - NEO
-    - KCS
-    - CRV
-    - OP
-    - KLAY
-    - MKR
-    - GMX
-    - SNX
-    - MINA
-    - LUNC
-    - RNDR
-    - FXS
-    - INJ
-    - BSV
-    - ZEC
-    - CAKE
-    - DASH
-    - HT
-    - MIOTA
-    - XEC
-    - XDC
-    - GT
-    - CSPR
-    - BTT
-    - RUNE
-    - TWT
-    - PAXG
-    - LRC
-    - ZIL
-    - WOO
-    - AGIX
-    - FLR
-    - DYDX
-    - CVX
-    - 1INCH
-    - KAVA
-    - ROSE
-    - ENJ
-    - OSMO
-    - BAT
+#    - HBAR
+#    - NEAR
+#    - ICP
+#    - VET
+#    - CRO
+#    - APE
+#    - ALGO
+#    - GRT
+#    - FTM
+#    - QNT
+#    - EOS
+#    - MANA
+#    - THETA
+#    - STX
+#    - AAVE
+#    - EGLD
+#    - AXS
+#    - FLOW
+#    - XTZ
+#    - RPL
+#    - SAND
+#    - IMX
+#    - CFX
+#    - BIT
+#    - USDP
+#    - CHZ
+#    - NEO
+#    - KCS
+#    - CRV
+#    - OP
+#    - KLAY
+#    - MKR
+#    - GMX
+#    - SNX
+#    - MINA
+#    - LUNC
+#    - RNDR
+#    - FXS
+#    - INJ
+#    - BSV
+#    - ZEC
+#    - CAKE
+#    - DASH
+#    - HT
+#    - MIOTA
+#    - XEC
+#    - XDC
+#    - GT
+#    - CSPR
+#    - BTT
+#    - RUNE
+#    - TWT
+#    - PAXG
+#    - LRC
+#    - ZIL
+#    - WOO
+#    - AGIX
+#    - FLR
+#    - DYDX
+#    - CVX
+#    - 1INCH
+#    - KAVA
+#    - ROSE
+#    - ENJ
+#    - OSMO
+#    - BAT
 
 scam:
   minArbitrageProfitPercentage: 0.3
-  orderbookMaxAgeMinutes: 5
+  orderbookMaxAgeMinutes: 3

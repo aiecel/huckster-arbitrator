@@ -4,8 +4,11 @@ import com.fasterxml.jackson.core.JacksonException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.kotlin.readValue
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.runBlocking
 import mu.KotlinLogging
+import org.huckster.application.Application
+import org.huckster.application.ApplicationProperties
 import org.huckster.music.MusicPlayer
 import org.huckster.music.MusicProperties
 import org.huckster.util.configureJacksonMapper
@@ -31,6 +34,8 @@ fun main(args: Array<String>): Unit = runBlocking {
 
     val application = Application(properties)
     application.run()
+
+    log.info("Goodbye!")
 }
 
 // напечатай БАНнер

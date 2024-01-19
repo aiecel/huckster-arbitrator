@@ -1,7 +1,7 @@
 package org.huckster.exchange
 
 import kotlinx.coroutines.flow.Flow
-import org.huckster.orderbook.model.OrderbookDiff
+import org.huckster.orderbook.model.OrderbookDelta
 
 /**
  * Интерфейс для бирж
@@ -24,5 +24,5 @@ interface Exchange {
      * @param symbols Символы
      * @return пары Символ - Изменение стакана
      */
-    suspend fun listenToOrderbookDiff(symbols: Set<String>): Flow<Pair<String, OrderbookDiff>>
+    suspend fun listenToOrderbookDelta(symbols: Set<String>): Flow<Pair<String, OrderbookDelta>>
 }

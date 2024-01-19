@@ -1,7 +1,8 @@
-package org.huckster
+package org.huckster.application
 
 import org.huckster.arbitrage.ArbitratorProperties
 import org.huckster.exchange.ExchangeProperties
+import org.huckster.health.EventFrequencyKillSwitchProperties
 import org.huckster.music.MusicProperties
 import org.huckster.notification.NotificationProperties
 import org.huckster.orderbook.OrderbookProperties
@@ -30,19 +31,29 @@ data class ApplicationProperties(
      *
      * Чтобы не перезапускать напиши -1
      */
-    val restartOrderbookUpdateInMillis: Long = -1,
+    val restartDelayMillis: Long = -1,
+
+    /**
+     * Параметры рубильника для частоты перезапуска
+     */
+    val tooManyRestartsKillSwitch: EventFrequencyKillSwitchProperties = EventFrequencyKillSwitchProperties(),
 
     /**
      * Сколько миллисекунд ждать после выполнения арбитража.
      *
      * Нужно чтоб не спамить
      */
-    val waitAfterArbitrageExecutionMillis: Long = 5000,
+    val arbitrageExecutionDelayMillis: Long = 5000,
+
+    /**
+     * Параметры рубильника для частоты исполнения арбитражей
+     */
+    val tooManyArbitragesKillSwitch: EventFrequencyKillSwitchProperties = EventFrequencyKillSwitchProperties(),
 
     /**
      * Параметры музыки (режим БТБТ)
      */
-    val music: MusicProperties?,
+    val music: MusicProperties? = null,
 
     /**
      * Параметры стаканов

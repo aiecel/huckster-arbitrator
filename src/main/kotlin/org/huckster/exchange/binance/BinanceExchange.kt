@@ -10,13 +10,14 @@ import io.ktor.serialization.jackson.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import mu.KotlinLogging
-import org.huckster.util.configureJacksonMapper
 import org.huckster.exchange.Exchange
 import org.huckster.exchange.binance.exception.BinanceException
 import org.huckster.exchange.binance.model.DiffDepthStreamMessage
 import org.huckster.exchange.binance.model.ExchangeInfoResponse
-import org.huckster.orderbook.model.OrderbookDiff
+import org.huckster.orderbook.model.OrderbookDelta
+import org.huckster.util.configureJacksonMapper
 import org.huckster.util.loggingPlugin
+import sun.security.krb5.internal.KDCOptions.with
 import java.time.Instant
 
 /**
@@ -70,12 +71,12 @@ class BinanceExchange(private val properties: BinanceExchangeProperties) : Excha
      * Получить все доступные символы для торговли на споте
      */
     override suspend fun getAvailableSpotSymbols(): Set<String> {
-        val response = client
+        return client
             .get("api/v3/exchangeInfo") { parameter("permissions", "SPOT") }
             .body<ExchangeInfoResponse>()
-
-        val symbols = response.symbols
-        return symbols.map { it.symbol }.toSet()
+            .symbols
+            .map { it.symbol }
+            .toSet()
     }
 
     /**
@@ -84,7 +85,7 @@ class BinanceExchange(private val properties: BinanceExchangeProperties) : Excha
      * @param symbols Символы
      * @return пары Символ - Изменение стакана
      */
-    override suspend fun listenToOrderbookDiff(symbols: Set<String>): Flow<Pair<String, OrderbookDiff>> {
+    override suspend fun listenToOrderbookDelta(symbols: Set<String>): Flow<Pair<String, OrderbookDelta>> {
         val streams = symbols.map { symbol -> "${symbol.lowercase()}@depth@100ms" }
 
         return websocketClient
@@ -93,12 +94,12 @@ class BinanceExchange(private val properties: BinanceExchangeProperties) : Excha
                 val symbol = message.stream.substringBefore("@").uppercase()
 
                 with(message.data) {
-                    val orderbookDiff = OrderbookDiff(
+                    val orderbookDelta = OrderbookDelta(
                         timestamp = Instant.ofEpochMilli(timestamp),
                         newAsks = asks.associate { ask -> ask[0].toDouble() to ask[1].toDouble() },
                         newBids = bids.associate { bid -> bid[0].toDouble() to bid[1].toDouble() }
                     )
-                    symbol to orderbookDiff
+                    symbol to orderbookDelta
                 }
             }
     }

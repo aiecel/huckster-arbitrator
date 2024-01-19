@@ -1,7 +1,7 @@
 package org.huckster.orderbook
 
 import mu.KotlinLogging
-import org.huckster.orderbook.model.OrderbookDiff
+import org.huckster.orderbook.model.OrderbookDelta
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -30,12 +30,12 @@ class OrderbookKeeper(private val orderbookProperties: OrderbookProperties) {
     /**
      * Обновить стакан для актива
      */
-    fun updateOrderbook(symbol: String, orderbookDiff: OrderbookDiff) {
+    fun updateOrderbook(symbol: String, delta: OrderbookDelta) {
         val orderbook = orderbooks[symbol] ?: return
-        orderbook.update(orderbookDiff)
+        orderbook.update(delta)
         log.debug(
             "Updated orderbook for symbol $symbol " +
-                    "with ${orderbookDiff.newAsks.size} asks and ${orderbookDiff.newBids.size} bids"
+                    "with ${delta.newAsks.size} asks and ${delta.newBids.size} bids"
         )
         logOrderbook(symbol, orderbook)
     }

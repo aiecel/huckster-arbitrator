@@ -6,7 +6,7 @@ import io.ktor.client.*
 import io.ktor.client.plugins.websocket.*
 import io.ktor.http.*
 import io.ktor.websocket.*
-import kotlinx.coroutines.flow.Flow
+import jdk.jfr.internal.OldObjectSample.emit
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
 import mu.KotlinLogging
@@ -24,15 +24,16 @@ class BinanceWebsocketClient(private val properties: BinanceExchangeProperties) 
     private val log = KotlinLogging.logger { }
 
     private val client = HttpClient {
-        install(WebSockets)
+        install(WebSockets) {
+            pingInterval = 30_000
+        }
         install(loggingPlugin(log))
     }
 
     /**
      * Подписаться на streams
      */
-    @Suppress("BlockingMethodInNonBlockingContext") // майкл джексон гонит порожняк
-    suspend fun <T> listen(streams: Collection<String>, responseClass: Class<T>): Flow<T> = flow {
+    suspend fun <T> listen(streams: Collection<String>, responseClass: Class<T>) = flow {
         val baseUrl = URLBuilder(protocol = URLProtocol.WSS, host = properties.hostWebsocket).buildString()
         val streamsQuery = streams.joinToString("/")
         val fullUrl = "$baseUrl/stream?streams=$streamsQuery"
@@ -59,7 +60,6 @@ class BinanceWebsocketClient(private val properties: BinanceExchangeProperties) 
                     )
                 }
             }
-            close()
         }
     }
 }

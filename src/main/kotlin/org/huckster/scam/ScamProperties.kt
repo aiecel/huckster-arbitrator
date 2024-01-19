@@ -8,10 +8,10 @@ data class ScamProperties(
     /**
      * Минимальный прогнозируемый профит
      */
-    val minArbitrageProfitPercentage: Double = 3.0,
+    val minArbitrageProfitPercentage: Double = 1.0,
 
     /**
      * Сколько минут должно пройти с последнего обновления стакана, чтобы он считался тухлым
      */
-    val orderbookMaxAgeMinutes: Long = 5
+    val orderbookMaxAgeMinutes: Long = 3
 )

@@ -1,6 +1,6 @@
 package org.huckster.orderbook
 
-import org.huckster.orderbook.model.OrderbookDiff
+import org.huckster.orderbook.model.OrderbookDelta
 import org.huckster.orderbook.model.PriceLevel
 import java.time.Instant
 import java.util.*
@@ -61,9 +61,9 @@ class Orderbook(
      *
      * //todo починить описание
      */
-    fun update(orderbookDiff: OrderbookDiff) {
-        updateAsksAndBids(orderbookDiff.newAsks, orderbookDiff.newBids)
-        lastUpdatedTimestamp = orderbookDiff.timestamp
+    fun update(delta: OrderbookDelta) {
+        updateAsksAndBids(delta.newAsks, delta.newBids)
+        lastUpdatedTimestamp = delta.timestamp
     }
 
     /**
